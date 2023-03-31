@@ -209,13 +209,10 @@ class AsyncLearningNode(ThreadPoolMixIn, socketserver.TCPServer):
                 self.replay_buffer.store(semibuffer)
 
             # Learning steps for the policy
-            steps = 0
             for _ in range(max(1, min(self.update_steps, len(self.replay_buffer) // self.replay_buffer.batch_size))):
                 batch = self.replay_buffer.sample_batch()
                 self.agent.update(data=batch)
-                steps += 1
                 # print(next(self.agent.actor_critic.policy.mu_layer.parameters()))
-            logging.info(f" Buffer sampling steps = {steps}")
 
             # Update policy without blocking
             self.update_agent()
