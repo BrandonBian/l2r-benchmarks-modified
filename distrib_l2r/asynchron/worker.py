@@ -19,10 +19,11 @@ from distrib_l2r.api import EvalResultsMsg
 from distrib_l2r.api import InitMsg
 from distrib_l2r.utils import send_data
 
+logging.getLogger('').setLevel(logging.INFO)
 
 # pip install git+https://github.com/learn-to-race/l2r.git@aicrowd-environment
-#from l2r import build_env
-#from l2r import RacingEnv
+# from l2r import build_env
+# from l2r import RacingEnv
 
 from src.config.yamlize import create_configurable, NameToSourcePath, yamlize
 from src.constants import DEVICE
@@ -34,11 +35,11 @@ class AsnycWorker:
     """An asynchronous worker"""
 
     def __init__(
-        self,
-        learner_address: Tuple[str, int],
-        buffer_size: int = 5000,
-        env_wrapper: Optional[Wrapper] = None,
-        **kwargs,
+            self,
+            learner_address: Tuple[str, int],
+            buffer_size: int = 5000,
+            env_wrapper: Optional[Wrapper] = None,
+            **kwargs,
     ) -> None:
 
         self.learner_address = learner_address
@@ -98,40 +99,50 @@ class AsnycWorker:
 
     def work(self) -> None:
         """Continously collect data"""
-
+        counter = 0
         is_train = True
-        logging.warn("Trying to send data.")
+        logging.info("Sending init message to establish connection")
         response = send_data(data=InitMsg(), addr=self.learner_address, reply=True)
         policy_id, policy = response.data["policy_id"], response.data["policy"]
 
         while True:
             buffer, result = self.collect_data(policy_weights=policy, is_train=is_train)
-            logging.warn("Data collection finished! Sending.")
+            self.mean_reward = self.mean_reward * (0.2) + result["reward"] * 0.8
 
             if is_train:
                 response = send_data(
-                    data=BufferMsg(data=buffer), addr=self.learner_address, reply=True
+                    data=BufferMsg(data=buffer),
+                    addr=self.learner_address,
+                    reply=True
                 )
-                logging.warn("Sent!")
+
+                logging.info(f"--- Iteration {counter}: Training ---")
+                logging.info(f">> reward (not sent): {self.mean_reward}")
+                logging.info(f">> buffer size (sent): {len(buffer)}")
 
             else:
-                self.mean_reward = self.mean_reward * (0.2) + result["reward"] * 0.8
-                logging.warn(f"reward: {self.mean_reward}")
+
                 response = send_data(
                     data=EvalResultsMsg(data=result),
                     addr=self.learner_address,
                     reply=True,
                 )
-                logging.warn("Sent!")
+
+                logging.info(f"--- Iteration {counter}: Inference ---")
+                logging.info(f">> reward (sent): {self.mean_reward}")
+                logging.info(f">> buffer size (not sent): {len(buffer)}")
 
             is_train = response.data["is_train"]
             policy_id, policy = response.data["policy_id"], response.data["policy"]
 
+            print("")
+            counter += 1
+
     def collect_data(
-        self, policy_weights: dict, is_train: bool = True
+            self, policy_weights: dict, is_train: bool = True
     ) -> Tuple[ReplayBuffer, Any]:
         """Collect 1 episode of data in the environment"""
-        
+
         buffer, result = self.runner.run(self.env, policy_weights, is_train)
 
         return buffer, result
