@@ -152,7 +152,6 @@ class AsyncLearningNode(ThreadPoolMixIn, socketserver.TCPServer):
         self.agent_id = 1
 
         # The bytes of the policy to reply to requests with
-
         self.updated_agent = {k: v.cpu() for k, v in self.agent.state_dict().items()}
 
         # A thread-safe policy queue to avoid blocking while learning. This marginally
@@ -188,7 +187,6 @@ class AsyncLearningNode(ThreadPoolMixIn, socketserver.TCPServer):
         if not self.agent_queue.empty():
             try:
                 # empty queue for safe put()
-                print("queue no wait blocking???")
                 _ = self.agent_queue.get_nowait()
             except queue.Empty:
                 pass
@@ -202,19 +200,22 @@ class AsyncLearningNode(ThreadPoolMixIn, socketserver.TCPServer):
             if not self.buffer_queue.empty() or len(self.replay_buffer) == 0:
                 semibuffer = self.buffer_queue.get()
 
-                logging.info(f"--- Epoch {epoch} ---")
-                logging.info(
-                    f"Samples received = {len(semibuffer)} | Replay buffer size = {self.replay_buffer.__len__()}")
-                logging.info(f"Buffers to be processed = {self.buffer_queue.qsize()}")
+                logging.info(f" --- Epoch {epoch} ---")
+                logging.info(f" Samples received = {len(semibuffer)}")
+                logging.info(f" Replay buffer size = {len(self.replay_buffer)}")
+                logging.info(f" Buffers to be processed = {self.buffer_queue.qsize()}")
 
                 # Add new data to the primary replay buffer
                 self.replay_buffer.store(semibuffer)
 
             # Learning steps for the policy
+            steps = 0
             for _ in range(max(1, min(self.update_steps, len(self.replay_buffer) // self.replay_buffer.batch_size))):
                 batch = self.replay_buffer.sample_batch()
                 self.agent.update(data=batch)
+                steps += 1
                 # print(next(self.agent.actor_critic.policy.mu_layer.parameters()))
+            logging.info(f" Buffer sampling steps = {steps}")
 
             # Update policy without blocking
             self.update_agent()

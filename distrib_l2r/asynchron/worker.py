@@ -116,9 +116,9 @@ class AsnycWorker:
                     reply=True
                 )
 
-                logging.info(f"--- Iteration {counter}: Training ---")
-                logging.info(f">> reward (not sent): {self.mean_reward}")
-                logging.info(f">> buffer size (sent): {len(buffer)}")
+                logging.info(f" --- Iteration {counter}: Training ---")
+                logging.info(f" >> reward (not sent): {self.mean_reward}")
+                logging.info(f" >> buffer size (sent): {len(buffer)}")
 
             else:
 
@@ -128,9 +128,9 @@ class AsnycWorker:
                     reply=True,
                 )
 
-                logging.info(f"--- Iteration {counter}: Inference ---")
-                logging.info(f">> reward (sent): {self.mean_reward}")
-                logging.info(f">> buffer size (not sent): {len(buffer)}")
+                logging.info(f" --- Iteration {counter}: Inference ---")
+                logging.info(f" >> reward (sent): {self.mean_reward}")
+                logging.info(f" >> buffer size (not sent): {len(buffer)}")
 
             is_train = response.data["is_train"]
             policy_id, policy = response.data["policy_id"], response.data["policy"]
